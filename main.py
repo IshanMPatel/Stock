@@ -1,6 +1,5 @@
 import yfinance as yf
 import requests
-import time
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import os
@@ -57,6 +56,29 @@ def get_news(symbol):
     except Exception as e:
         return [(f"Error fetching news: {e}", "")]
 
+def get_historical_data(symbol, period="1mo"):
+    """Fetches historical data for a given stock symbol."""
+    try:
+        stock = yf.Ticker(symbol)
+        history = stock.history(period=period)
+        if history.empty:
+            return f"Error: No historical data available for {symbol}."
+        return history
+    except Exception as e:
+        return f"Error fetching historical data for {symbol}: {e}"
+
+def get_moving_average(symbol, window=20):
+    """Calculates the moving average for a given stock symbol."""
+    try:
+        stock = yf.Ticker(symbol)
+        history = stock.history(period="1mo")
+        if history.empty:
+            return f"Error: No historical data available for {symbol}."
+        moving_average = history['Close'].rolling(window=window).mean().iloc[-1]
+        return f"{symbol.upper()} {window}-Day Moving Average: ${moving_average:.2f}"
+    except Exception as e:
+        return f"Error calculating moving average for {symbol}: {e}"
+
 def display_help():
     """Displays the help menu with available commands."""
     help_text = """
@@ -70,13 +92,19 @@ Available commands:
 3. news <symbol> - Fetches the latest stock news headlines for the specified symbol.
    Example: news AAPL
 
-4. exit - Exits the program.
+4. history <symbol> [period] - Fetches historical data for the specified symbol.
+   Example: history AAPL 1mo
+
+5. ma <symbol> [window] - Calculates the moving average for the specified symbol.
+   Example: ma AAPL 20
+
+6. exit - Exits the program.
    Example: exit
 
-5. help - Displays this help menu.
+7. help - Displays this help menu.
    Example: help
 """
-    print(help_text)
+    return help_text
 
 def main():
     while True:
@@ -97,14 +125,27 @@ def main():
                 print(f"- {headline} ({url})")
             print()
         
+        elif command.startswith("history"):
+            symbol = command.split()[1].upper()
+            period = command.split()[2] if len(command.split()) > 2 else "1mo"
+            print(get_historical_data(symbol, period))
+
+        elif command.startswith("ma"):
+            symbol = command.split()[1].upper()
+            window = int(command.split()[2]) if len(command.split()) > 2 else 20
+            print(get_moving_average(symbol, window))
+
+        elif command == "help":
+            print(display_help())
+
+        elif command == "":
+            continue
+
         elif command == "exit":
             break
         
-        elif command == "help":
-            display_help()
-        
         else:
-            print("Invalid command. Commands: 'stock <symbol>', 'crypto <id>', 'news <symbol>', 'exit', 'help'")
+            print(f"Invalid command: \"{command}\", Please type 'help' to see available commands.")
 
 if __name__ == "__main__":
     main()
